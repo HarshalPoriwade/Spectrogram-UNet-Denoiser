@@ -1,0 +1,31 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+env/
+.env
+
+# Large Model Weights (DO NOT COMMIT to GitHub)
+*.h5
+
+# Audio and Video Testing Files
+*.wav
+*.mp4
+*.m4a
+*.flac
+*.mp3
+
+# Output Directories
+demo_outputs/
+evaluation_audio/
+
+# IDE files
+.vscode/
+.idea/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+
