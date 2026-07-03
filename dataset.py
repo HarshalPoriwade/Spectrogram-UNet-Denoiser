@@ -39,9 +39,7 @@ def py_read_clean_audio(file_path):
     try:
         data = _load_raw_audio(file_path)
         
-        # Apply RIR echo (only to clean voice!) so the AI learns to remove reverb.
-        # BUG FIX: we use a DEDICATED function for clean audio so we can safely apply RIR.
-        # The old code checked 'if clean in file_path' which failed for VCTK paths.
+        # Apply RIR to clean audio for dereverberation learning.
         if len(GLOBAL_RIR_PATHS) > 0 and np.random.rand() > 0.5:
             rir_path = np.random.choice(GLOBAL_RIR_PATHS)
             try:
@@ -61,7 +59,7 @@ def py_read_clean_audio(file_path):
         return np.zeros(SAMPLES_PER_FRAGMENT, dtype=np.float32)
 
 def py_read_noise_audio(file_path):
-    """Loads NOISE audio. No RIR is applied to noise."""
+    """Loads background noise audio."""
     file_path = file_path.decode('utf-8')
     try:
         data = _load_raw_audio(file_path)
@@ -80,9 +78,12 @@ def mix_audio(clean, noise, target_snr_db):
     
     mixed = clean + noise * scale
     
-    # Basic Clipping (will cause distortion at extreme SNRs, to be fixed in Commit 3)
-    mixed = tf.clip_by_value(mixed, -0.99, 0.99)
-    clean = tf.clip_by_value(clean, -0.99, 0.99)
+    # Dynamic normalization to prevent IRM distortion at low SNRs.
+    max_val = tf.reduce_max(tf.abs(mixed))
+    scale_factor = tf.cond(max_val > 0.95, lambda: 0.95 / max_val, lambda: 1.0)
+    
+    mixed = mixed * scale_factor
+    clean = clean * scale_factor
     
     # Return as 1D sequence for STFT (Batch, 33536)
     return mixed, clean
@@ -115,13 +116,10 @@ def create_tf_dataset(clean_dir, noise_dirs, batch_size=8, rir_dir=None):
     else:
         noise_paths = glob.glob(os.path.join(noise_dirs, '**', '*.wav'), recursive=True)
 
-    # --- CRITICAL FILTERS ---
-    # 1. Exclude MUSAN 'speech' folder: contains clean close-mic speech, NOT noise!
-    #    If included, the AI learns to REMOVE human voices instead of preserve them.
+    # Exclude MUSAN speech subset to prevent target cancellation.
     noise_paths = [p for p in noise_paths if 'speech' not in p.replace('\\', '/').lower().split('/')]
     
-    # 2. In DEMAND, prefer the 48k versions. Exclude 16k duplicates to avoid quality drop.
-    #    The folder names end with _48k or _16k. We keep _48k and exclude _16k.
+    # Prefer 48k DEMAND samples over 16k duplicates.
     demand_paths = [p for p in noise_paths if 'demand' in p.replace('\\', '/').lower()]
     if demand_paths:
         # Check if 48k files exist; if so, drop the 16k ones
@@ -150,8 +148,8 @@ def create_tf_dataset(clean_dir, noise_dirs, batch_size=8, rir_dir=None):
         clean_audio.set_shape([SAMPLES_PER_FRAGMENT])
         noise_audio.set_shape([SAMPLES_PER_FRAGMENT])
         
-        # Standard SNR between -5 dB and +5 dB
-        snr = tf.random.uniform([], -5.0, 5.0)
+        # Training SNR range for extreme noise robustness
+        snr = tf.random.uniform([], -15.0, 10.0)
         return mix_audio(clean_audio, noise_audio, snr)
 
     ds = tf.data.Dataset.zip((clean_ds, noise_ds))
