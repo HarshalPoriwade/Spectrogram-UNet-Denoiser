@@ -48,7 +48,7 @@ def generate_test_audio(duration=5.0, sr=48000):
     
     # 3. Low Freq Rumble
     rumble = np.random.randn(*t.shape)
-    b, a = librosa.filters.get_window('hann', 100), [1.0] # simple lowpass via convolution
+    b, a = librosa.filters.get_window('hann', 100), [1.0] 
     rumble = np.convolve(rumble, b, mode='same')
     noises['Low_Freq_Rumble'] = rumble / np.max(np.abs(rumble))
     
@@ -124,10 +124,8 @@ def process_audio(audio, interpreter, in_idx, out_idx):
     return out_audio
 
 def calculate_snr(clean, noisy):
-    # FIRST DRAFT BUG: Incorrectly calculating noise power using the raw noisy signal
-    # instead of the isolated noise (clean - noisy). This will yield negative SNRs.
     signal_power = np.mean(clean ** 2)
-    noise_power = np.mean(noisy ** 2)
+    noise_power = np.mean((clean - noisy) ** 2)
     if noise_power == 0:
         return 100.0
     return 10 * np.log10(signal_power / noise_power)
