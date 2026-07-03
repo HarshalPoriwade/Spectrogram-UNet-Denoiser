@@ -101,12 +101,28 @@ def train():
 
     checkpoint_path = 'spectrogram_unet_best.weights.h5'
     
-    # Basic local loading only
+    # 1. First check if there's a checkpoint in the working dir (mid-run restart)
     if os.path.exists(checkpoint_path):
         print(f"\nResuming from local working directory: {checkpoint_path}")
         model.load_weights(checkpoint_path)
     else:
-        print("\nNo checkpoint found. Starting fresh.")
+        # 2. Check Kaggle mounted input models automatically!
+        import glob
+        
+        # Explicit path provided by user for instant loading
+        exact_path = '/kaggle/input/models/harshalporiwade844/spectrogram-unet-weights/keras/default/1/spectrogram_unet_best.weights.h5'
+        
+        if os.path.exists(exact_path):
+            print(f"\nResuming from EXACT Kaggle Mounted Model: {exact_path}")
+            model.load_weights(exact_path)
+        else:
+            # Fallback to searching all mounted inputs just in case Kaggle renames a folder
+            mounted_models = glob.glob('/kaggle/input/**/*.weights.h5', recursive=True)
+            if len(mounted_models) > 0:
+                print(f"\nResuming from Kaggle Mounted Model (Auto-Detected): {mounted_models[0]}")
+                model.load_weights(mounted_models[0])
+            else:
+                print("\nNo checkpoint found. Starting fresh.")
 
     callbacks = [
         tf.keras.callbacks.ModelCheckpoint(
@@ -115,7 +131,21 @@ def train():
             save_best_only=True,
             save_weights_only=True,
             verbose=1
-        )
+        ),
+        tf.keras.callbacks.ReduceLROnPlateau(
+            monitor='loss',
+            factor=0.5,
+            patience=5,
+            min_lr=1e-6,
+            verbose=1
+        ),
+        tf.keras.callbacks.EarlyStopping(
+            monitor='loss',
+            patience=10,
+            restore_best_weights=True,
+            verbose=1
+        ),
+        TimeLimitCallback(max_hours=11.0)
     ]
 
     print("\n=== Starting Training (max 150 epochs or 11 hours) ===")
