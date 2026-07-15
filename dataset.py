@@ -116,23 +116,17 @@ def create_tf_dataset(clean_dir, noise_dirs, batch_size=8, rir_dir=None):
     else:
         noise_paths = glob.glob(os.path.join(noise_dirs, '**', '*.wav'), recursive=True)
 
-    # Exclude MUSAN speech subset to prevent target cancellation.
+    # Exclude any background noises that accidentally contain human speech to prevent target cancellation.
     noise_paths = [p for p in noise_paths if 'speech' not in p.replace('\\', '/').lower().split('/')]
     
-    # Prefer 48k DEMAND samples over 16k duplicates.
-    demand_paths = [p for p in noise_paths if 'demand' in p.replace('\\', '/').lower()]
-    if demand_paths:
-        # Check if 48k files exist; if so, drop the 16k ones
-        has_48k = any('_48k' in p.replace('\\', '/').lower() for p in demand_paths)
-        if has_48k:
-            noise_paths = [
-                p for p in noise_paths 
-                if 'demand' not in p.replace('\\', '/').lower() or '_48k' in p.replace('\\', '/').lower()
-            ]
-            print("DEMAND dataset: Using only 48k files for maximum quality.")
+    # Filter for high-resolution datasets (e.g., dropping 16kHz legacy duplicates)
+    high_res_paths = [p for p in noise_paths if 'high_res' in p.replace('\\', '/').lower()]
+    if high_res_paths:
+        noise_paths = high_res_paths
+        print("Using curated high-resolution environmental noise subset.")
 
     print(f"Found {len(clean_paths)} clean audio files.")
-    print(f"Found {len(noise_paths)} noise audio files (speech excluded, DEMAND 48k preferred).")
+    print(f"Found {len(noise_paths)} noise audio files.")
     
     if not clean_paths or not noise_paths:
         raise ValueError("Audio directories are empty! Please check the dataset paths.")

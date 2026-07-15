@@ -1,6 +1,18 @@
-tensorflow>=2.10.0
-soundfile>=0.12.1
-librosa>=0.10.0
-scipy>=1.10.1
-numpy>=1.23.5
+# Core ML Framework
+tensorflow>=2.14.0
+
+# Edge AI Runtime (For lightning-fast Float16 inference)
 ai-edge-litert
+
+# Audio Processing & Feature Extraction
+librosa>=0.10.0
+soundfile>=0.12.1
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Video Parsing (For extracting audio from MP4 files on the fly)
+moviepy>=1.0.3
+
+# Evaluation Metrics (SOTA Academic Benchmarking)
+pesq>=0.0.4
+pystoi>=0.3.3

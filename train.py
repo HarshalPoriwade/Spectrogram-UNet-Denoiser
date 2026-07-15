@@ -72,13 +72,13 @@ class TimeLimitCallback(tf.keras.callbacks.Callback):
             self.model.stop_training = True
 
 def train():
-    CLEAN_DIR = '/kaggle/input/datasets/pratt3000/vctk-corpus'
-    RIR_DIR   = '/kaggle/input/datasets/tuannguyenvananh/room-impulse-response-and-noise-database'
+    # NOTE: Add your own proprietary clean and noise datasets to these directories.
+    # The actual datasets used for the commercial deployment model are kept private.
+    CLEAN_DIR = './data/clean_speech'
+    RIR_DIR   = './data/room_impulse_responses'
     NOISE_DIRS = [
-        '/kaggle/input/datasets/chrisfilo/demand',
-        '/kaggle/input/datasets/eliasmarcon/environmental-sound-classification-50',
-        '/kaggle/input/datasets/nhattruongdev/musan-noise',
-        '/kaggle/input/datasets/chrisfilo/urbansound8k',
+        './data/noise_environmental',
+        './data/noise_synthetic'
     ]
 
     # Spectrogram models are memory-efficient. Batch 16 is safe on Kaggle P100/T4.
@@ -109,8 +109,8 @@ def train():
         # 2. Check Kaggle mounted input models automatically!
         import glob
         
-        # Explicit path provided by user for instant loading
-        exact_path = '/kaggle/input/models/harshalporiwade844/spectrogram-unet-weights/keras/default/1/spectrogram_unet_best.weights.h5'
+        # Check for remote/cluster mounted checkpoints
+        exact_path = '/mnt/cluster/models/spectrogram_unet_best.weights.h5'
         
         if os.path.exists(exact_path):
             print(f"\nResuming from EXACT Kaggle Mounted Model: {exact_path}")
